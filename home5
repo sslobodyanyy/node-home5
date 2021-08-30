@@ -1,0 +1,104 @@
+===================================
+app.js
+===================================
+const express = require('express');
+const mongoose = require('mongoose');
+const { errorMessages } = require('./error');
+const { userRouter, authRouter } = require('./router');
+const { variables } = require('./config');
+const { statusCodeEnum } = require('./constants/enum');
+const { statusCodeEnum } = require('./constants');
+
+nomgoose.connect(variables.MONGO_CONNECTION);
+
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: true}));
+app.listen(variables.PORT, () => {
+    console.log(`App listen on localhost ${variables.PORT}`);
+});
+app.use('/auth', authRouter);
+app.use('/users', useRouter);
+app.use('*', _notFoundErrorHandler);
+app.use(_mainErrorHandler);
+function _notFoundErrorHandler(err, req, res, next) {
+    next({
+	status: err.status || statusCodesEnum.NOT_FOUND,
+	message: err.message || errorMessages.NOT_FOUND_ERR
+    });
+}
+function _mainErrorHandler(err, req, res, next) {
+    res
+	.status(err.status || statusCodesEnum.SERVER_ERROR)
+	.json({
+	    message: err.message || errorMessage.INTERNAL_SERVER_ERROR
+	});
+}
+
+====================================
+dataBase/User.js 
+====================================
+const { Schema, model } = require('mongoose');
+const { userRolesEnum } = require('../constants/enum');
+const { userRolesEnum } = require('../constants');
+
+const UserSchema = new Schema({
+    name: {
+	type: String,
+	required: true,
+	trim: true
+    },
+    email: {
+	type: String,
+	required: true,
+	trim: true
+    },
+    password: {
+	type: String,
+	required: true,
+	trim: true
+    },
+    role: {
+	type: String,
+	default: userRolesEnum.USER,
+	enum: Object.values(userRolesEnum)
+    },
+}, 
+{ timestamps: true });
+module.exports = model('user', UserSchema);
+
+====================================
+service/password.service.js 
+====================================
+const bcrypt = require('bcrypt');
+
+const { statusCodesEnum } = require('../constants/enum');
+const { statusCodesEnum } = require('../constants');
+const { ErrorHandler, errorMessages } = require('../error');
+
+module.exports = {
+    hashPassword: (password) => bcrypt.hash(password, 10),
+    comparePassword: async (password, hash) => {
+        const isPasswordMatched = await bcrypt.compare(password, hash);
+        if (!isPasswordMatched) {
+            throw new ErrorHandler(statusCodesEnum.UNAUTHORIZED, errorMessages.WRONG_EMAIL_OR_PASSWORD);
+        }
+        return true;
+    }
+};
+
+=====================================
+validators/auth.validator.js 
+=====================================
+const Joi = require('joi');
+const { constants } = require('../config');
+const { regExpEnum } = require('../constants');
+
+const loginDataValidator = Joi.object({
+    password: Joi.string().regex(constants.PASSWORD_REGEX).trim().required(),
+    email: Joi.string().regex(constants.EMAIL_REGEX).trim().required(),
+    password: Joi.string().regex(regExpEnum.PASSWORD_REGEX).trim().required(),
+    email: Joi.string().regex(regExpEnum.EMAIL_REGEX).trim().required(),
+});
+
+module.exports = { loginDataValidator };
